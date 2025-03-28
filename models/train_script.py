@@ -12,6 +12,9 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import argparse
 
+import ray.train.torch
+from ray.train.torch import TorchTrainer
+
 cudnn.benchmark = True
 plt.ion()
 
@@ -41,17 +44,21 @@ data_transforms = {
 }
 
 
-def train_model(input_dir, output_dir, num_epochs):
+def train_model(config):
     since = time.time()
     
     image_dataset = {
-        x: datasets.ImageFolder(os.path.join(input_dir, x), data_transforms[x])
+        x: datasets.ImageFolder(os.path.join(config["input_dir"], x), data_transforms[x])
         for x in ["train", "test"]
     }
     dataloaders = {
         x: torch.utils.data.DataLoader(
-            image_dataset[x], batch_size=4, shuffle=True, num_workers=4
+            image_dataset[x], batch_size=4, shuffle=True
         )
+        for x in ["train", "test"]
+    }
+    dataloaders = {
+        x: ray.train.torch.prepare_dataloader(dataloaders[x])
         for x in ["train", "test"]
     }
     dataset_sizes = {x: len(image_dataset[x]) for x in ["train", "test"]}
@@ -65,7 +72,8 @@ def train_model(input_dir, output_dir, num_epochs):
     num_ftrs = model_ft.head.in_features
     model_ft.head = nn.Linear(num_ftrs, len(class_names))
     model = model_ft
-    model = model.to(device)
+    # model = model.to(device)
+    model = ray.train.torch.prepare_model(model)
 
     config_dict = {
         "model": "swin_v2_b",
@@ -89,8 +97,8 @@ def train_model(input_dir, output_dir, num_epochs):
         optimizer_ft, step_size=config_dict["step_size"], gamma=config_dict["gamma"]
     )
 
-    os.makedirs(output_dir, exist_ok=True)
-    final_model_path = output_dir + "/model.pth"
+    os.makedirs(config["output_dir"], exist_ok=True)
+    final_model_path = config["output_dir"] + "/model.pth"
 
 
     with TemporaryDirectory() as tempdir:
@@ -100,16 +108,20 @@ def train_model(input_dir, output_dir, num_epochs):
         best_acc = 0.0
 
         # Initialize a single progress bar for all epochs
-        total_steps = num_epochs * sum(
+        total_steps = config["num_epochs"] * sum(
             len(dataloader) for dataloader in dataloaders.values()
         )
         pbar = tqdm(
             total=total_steps, desc="Training Progress", leave=True, unit="batch"
         )
 
-        for epoch in range(num_epochs):
+        for epoch in range(config["num_epochs"]):
             # print(f"Epoch {epoch}/{num_epochs - 1}")
             # print("-" * 10)
+            
+            if ray.train.get_context().get_world_size() > 1:
+                dataloaders["train"].sampler.set_epoch(epoch)
+                dataloaders["test"].sampler.set_epoch(epoch)
 
             epoch_loss = {phase: 0.0 for phase in ["train", "test"]}
             epoch_corrects = {phase: 0 for phase in ["train", "test"]}
@@ -124,8 +136,8 @@ def train_model(input_dir, output_dir, num_epochs):
                 running_corrects = 0
 
                 for inputs, labels in dataloaders[phase]:
-                    inputs = inputs.to(device)
-                    labels = labels.to(device)
+                    # inputs = inputs.to(device)
+                    # labels = labels.to(device)
 
                     optimizer_ft.zero_grad()
 
@@ -140,11 +152,20 @@ def train_model(input_dir, output_dir, num_epochs):
 
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data)
+                    
+                    metrics = {
+                        "loss": loss.item(),
+                        "epoch": epoch,
+                        "accuracy": torch.sum(preds == labels.data).item(),
+                    }
+                    ray.train.report(metrics=metrics, checkpoint=ray.train.Checkpoint.from_directory(tempdir))
+                    if ray.train.get_context().get_world_rank() == 0:
+                        print(metrics)
 
                     pbar.update(1)
                     pbar.set_postfix(
                         {
-                            "epoch": f"{epoch + 1}/{num_epochs}",
+                            "epoch": f"{epoch + 1}/{config["num_epochs"]}",
                             "train_loss": running_loss / dataset_sizes["train"]
                             if phase == "train"
                             else epoch_loss["train"],
@@ -199,7 +220,17 @@ parser.add_argument("--output_dir", type=str, help="Path to the output directory
 parser.add_argument("--num_epochs", type=int, default=25, help="Number of epochs to train the model.")
 args = parser.parse_args()
 
+scaling_config = ray.train.ScalingConfig(num_workers=4, use_gpu=True if torch.cuda.is_available() else False)
 
-model_ft = train_model(
-    args.input_dir, args.output_dir, num_epochs=args.num_epochs
+# model_ft = train_model(
+#     args.input_dir, args.output_dir, num_epochs=args.num_epochs
+# )
+config = {
+    "input_dir": args.input_dir,
+    "output_dir": args.output_dir,
+    "num_epochs": args.num_epochs,
+}
+
+trainer = TorchTrainer(
+    train_model, scaling_config=scaling_config, train_loop_config=config
 )
