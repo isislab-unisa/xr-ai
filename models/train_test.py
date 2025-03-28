@@ -63,7 +63,7 @@ def train_func():
 
 
 # [4] Configure scaling and resource requirements.
-scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=True)
+scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False)
 
 # [5] Launch distributed training job.
 trainer = ray.train.torch.TorchTrainer(
