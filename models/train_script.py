@@ -14,6 +14,7 @@ import argparse
 
 import ray.train.torch
 from ray.train.torch import TorchTrainer
+from ray.train import RunConfig
 
 cudnn.benchmark = True
 plt.ion()
@@ -226,7 +227,7 @@ parser.add_argument("--output_dir", type=str, help="Path to the output directory
 parser.add_argument("--num_epochs", type=int, default=25, help="Number of epochs to train the model.")
 args = parser.parse_args()
 
-scaling_config = ray.train.ScalingConfig(num_workers=4, use_gpu=True if torch.cuda.is_available() else False)
+scaling_config = ray.train.ScalingConfig(num_workers=1, use_gpu=True if torch.cuda.is_available() else False)
 
 # model_ft = train_model(
 #     args.input_dir, args.output_dir, num_epochs=args.num_epochs
@@ -237,8 +238,10 @@ config = {
     "num_epochs": args.num_epochs,
 }
 
+run_config = RunConfig(storage_path=args.output_dir, name ="train_script")
+
 trainer = TorchTrainer(
-    train_model, scaling_config=scaling_config, train_loop_config=config
+    train_model, scaling_config=scaling_config, train_loop_config=config, run_config=run_config
 )
 result = trainer.fit()
 print("Training complete.")
