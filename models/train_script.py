@@ -63,6 +63,8 @@ def train_model(config):
     }
     dataset_sizes = {x: len(image_dataset[x]) for x in ["train", "test"]}
     class_names = image_dataset["train"].classes
+    
+    print("DATA OK")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
@@ -74,6 +76,8 @@ def train_model(config):
     model = model_ft
     # model = model.to(device)
     model = ray.train.torch.prepare_model(model)
+    
+    print("MODEL OK")
 
     config_dict = {
         "model": "swin_v2_b",
@@ -100,6 +104,7 @@ def train_model(config):
     os.makedirs(config["output_dir"], exist_ok=True)
     final_model_path = config["output_dir"] + "/model.pth"
 
+    print("TRAINING START")
 
     with TemporaryDirectory() as tempdir:
         best_model_params_path = os.path.join(tempdir, "best_model_params.pt")
@@ -120,6 +125,7 @@ def train_model(config):
             # print("-" * 10)
             
             if ray.train.get_context().get_world_size() > 1:
+                print("DATALOADERS OK")
                 dataloaders["train"].sampler.set_epoch(epoch)
                 dataloaders["test"].sampler.set_epoch(epoch)
 
@@ -234,5 +240,5 @@ config = {
 trainer = TorchTrainer(
     train_model, scaling_config=scaling_config, train_loop_config=config
 )
-result = trainer.fit()
+result = trainer.run()
 print("Training complete.")
