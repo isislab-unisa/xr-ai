@@ -63,7 +63,7 @@ def train_func():
 
 
 # [4] Configure scaling and resource requirements.
-scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False)
+scaling_config = ray.train.ScalingConfig(num_workers=1, use_gpu=False, resources_per_worker={"CPU": 1, "GPU": 0})
 
 # [5] Launch distributed training job.
 trainer = ray.train.torch.TorchTrainer(
@@ -77,10 +77,10 @@ trainer = ray.train.torch.TorchTrainer(
 result = trainer.fit()
 
 # [6] Load the trained model.
-with result.checkpoint.as_directory() as checkpoint_dir:
-    model_state_dict = torch.load(os.path.join(checkpoint_dir, "model.pt"))
-    model = resnet18(num_classes=10)
-    model.conv1 = torch.nn.Conv2d(
-        1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False
-    )
-    model.load_state_dict(model_state_dict)
+# with result.checkpoint.as_directory() as checkpoint_dir:
+#     model_state_dict = torch.load(os.path.join(checkpoint_dir, "model.pt"))
+#     model = resnet18(num_classes=10)
+#     model.conv1 = torch.nn.Conv2d(
+#         1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False
+#     )
+#     model.load_state_dict(model_state_dict)
