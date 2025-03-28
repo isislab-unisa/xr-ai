@@ -60,7 +60,7 @@ def train_func():
         if ray.train.get_context().get_world_rank() == 0:
             print(metrics)
 
-ray.init(num_gpus=0)
+ray.init()
 
 # [4] Configure scaling and resource requirements.
 scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False, resources_per_worker={"CPU": 1, "GPU": 0})
