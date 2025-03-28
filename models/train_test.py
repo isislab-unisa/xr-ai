@@ -11,7 +11,6 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 
 import ray.train.torch
 
-
 def train_func():
     # Model, Loss, Optimizer
     model = resnet18(num_classes=10)
@@ -61,6 +60,7 @@ def train_func():
         if ray.train.get_context().get_world_rank() == 0:
             print(metrics)
 
+ray.init(num_gpus=0)
 
 # [4] Configure scaling and resource requirements.
 scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False, resources_per_worker={"CPU": 1, "GPU": 0})
