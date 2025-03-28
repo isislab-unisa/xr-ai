@@ -16,14 +16,14 @@ import ray.train.torch
 from ray.train.torch import TorchTrainer
 from ray.train import RunConfig
 
-cudnn.benchmark = True
-plt.ion()
+# cudnn.benchmark = True
+# plt.ion()
 
-print("PyTorch Version: ", torch.__version__)
-print("CUDA Available: ", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("CUDA Version: ", torch.version.cuda)
-    print("CUDNN Version: ", torch.backends.cudnn.version())
+# print("PyTorch Version: ", torch.__version__)
+# print("CUDA Available: ", torch.cuda.is_available())
+# if torch.cuda.is_available():
+#     print("CUDA Version: ", torch.version.cuda)
+#     print("CUDNN Version: ", torch.backends.cudnn.version())
 
 
 def train_model(config):
