@@ -234,3 +234,5 @@ config = {
 trainer = TorchTrainer(
     train_model, scaling_config=scaling_config, train_loop_config=config
 )
+result = trainer.fit()
+print("Training complete.")
