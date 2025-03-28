@@ -227,6 +227,8 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, help="Path to the output directory.", required=True)
     parser.add_argument("--num_epochs", type=int, default=25, help="Number of epochs to train the model.")
     args = parser.parse_args()
+    
+    ray.init()
 
     scaling_config = ray.train.ScalingConfig(num_workers=1, use_gpu=True if torch.cuda.is_available() else False)
 
