@@ -163,27 +163,27 @@ def train_model(config):
                         print(metrics)
 
                     pbar.update(1)
-                    pbar.set_postfix(
-                        {
-                            "epoch": f"{epoch + 1}/{config["num_epochs"]}",
-                            "train_loss": running_loss / dataset_sizes["train"]
-                            if phase == "train"
-                            else epoch_loss["train"],
-                            "train_acc": (
-                                running_corrects.double() / dataset_sizes["train"]
-                            ).item()
-                            if phase == "train"
-                            else epoch_corrects["train"],
-                            "val_loss": running_loss / dataset_sizes["test"]
-                            if phase == "test"
-                            else epoch_loss["test"],
-                            "val_acc": (
-                                running_corrects.double() / dataset_sizes["test"]
-                            ).item()
-                            if phase == "test"
-                            else epoch_corrects["test"],
-                        }
-                    )
+                    # pbar.set_postfix(
+                    #     {
+                    #         "epoch": f"{epoch + 1}/{config["num_epochs"]}",
+                    #         "train_loss": running_loss / dataset_sizes["train"]
+                    #         if phase == "train"
+                    #         else epoch_loss["train"],
+                    #         "train_acc": (
+                    #             running_corrects.double() / dataset_sizes["train"]
+                    #         ).item()
+                    #         if phase == "train"
+                    #         else epoch_corrects["train"],
+                    #         "val_loss": running_loss / dataset_sizes["test"]
+                    #         if phase == "test"
+                    #         else epoch_loss["test"],
+                    #         "val_acc": (
+                    #             running_corrects.double() / dataset_sizes["test"]
+                    #         ).item()
+                    #         if phase == "test"
+                    #         else epoch_corrects["test"],
+                    #     }
+                    # )
 
                 if phase == "train":
                     exp_lr_scheduler.step()
