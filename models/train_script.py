@@ -25,28 +25,27 @@ if torch.cuda.is_available():
     print("CUDA Version: ", torch.version.cuda)
     print("CUDNN Version: ", torch.backends.cudnn.version())
 
-data_transforms = {
-    "train": transforms.Compose(
-        [
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]
-    ),
-    "test": transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]
-    ),
-}
-
 
 def train_model(config):
     since = time.time()
+    data_transforms = {
+        "train": transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
+        "test": transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
+    }
     
     image_dataset = {
         x: datasets.ImageFolder(os.path.join(config["input_dir"], x), data_transforms[x])
@@ -71,7 +70,8 @@ def train_model(config):
     # device = "cpu"
 
 
-    model_ft = models.swin_v2_b(weights="DEFAULT")
+    # model_ft = models.swin_v2_b(weights="DEFAULT")
+    model_ft = models.swin_v2_b(weights=models.Swin_V2_B_Weights.DEFAULT)
     num_ftrs = model_ft.head.in_features
     model_ft.head = nn.Linear(num_ftrs, len(class_names))
     model = model_ft
@@ -219,29 +219,30 @@ def train_model(config):
         model.load_state_dict(torch.load(best_model_params_path))
     return model
 
-parser = argparse.ArgumentParser(
-    description="Train script for image classification using PyTorch."
-)
-parser.add_argument("--input_dir", type=str, help="Path to the input directory.", required=True)
-parser.add_argument("--output_dir", type=str, help="Path to the output directory.", required=True)
-parser.add_argument("--num_epochs", type=int, default=25, help="Number of epochs to train the model.")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Train script for image classification using PyTorch."
+    )
+    parser.add_argument("--input_dir", type=str, help="Path to the input directory.", required=True)
+    parser.add_argument("--output_dir", type=str, help="Path to the output directory.", required=True)
+    parser.add_argument("--num_epochs", type=int, default=25, help="Number of epochs to train the model.")
+    args = parser.parse_args()
 
-scaling_config = ray.train.ScalingConfig(num_workers=1, use_gpu=True if torch.cuda.is_available() else False)
+    scaling_config = ray.train.ScalingConfig(num_workers=1, use_gpu=True if torch.cuda.is_available() else False)
 
-# model_ft = train_model(
-#     args.input_dir, args.output_dir, num_epochs=args.num_epochs
-# )
-config = {
-    "input_dir": args.input_dir,
-    "output_dir": args.output_dir,
-    "num_epochs": args.num_epochs,
-}
+    # model_ft = train_model(
+    #     args.input_dir, args.output_dir, num_epochs=args.num_epochs
+    # )
+    config = {
+        "input_dir": args.input_dir,
+        "output_dir": args.output_dir,
+        "num_epochs": args.num_epochs,
+    }
 
-run_config = RunConfig(storage_path=args.output_dir, name ="train_script")
+    run_config = RunConfig(storage_path=args.output_dir, name ="train_script")
 
-trainer = TorchTrainer(
-    train_model, scaling_config=scaling_config, train_loop_config=config, run_config=run_config
-)
-result = trainer.fit()
-print("Training complete.")
+    trainer = TorchTrainer(
+        train_model, scaling_config=scaling_config, train_loop_config=config, run_config=run_config
+    )
+    result = trainer.fit()
+    print("Training complete.")
